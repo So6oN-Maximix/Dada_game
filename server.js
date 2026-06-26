@@ -83,4 +83,4 @@ io.on("connection", (socket) => {
     });
 });
 
-http.listen(5500, () => console.log("Serveur lancé ! Ouvre http://localhost:5500 dans ton navigateur"));
+http.listen(process.env.PORT || 5500, () => console.log("Serveur lancé ! Ouvre http://localhost:5500 dans ton navigateur"));

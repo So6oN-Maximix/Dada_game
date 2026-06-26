@@ -1,0 +1,22 @@
+name: Deploy to Alwaysdata
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ssh-dadagame.alwaysdata.net
+          username: dadagame
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/dadagame/www
+            git pull origin main
+            npm install --production
