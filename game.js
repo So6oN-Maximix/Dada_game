@@ -297,7 +297,7 @@ function playCard(cardValue) {
 
                                 needToMovePawn = false;
                                 clearSelections();
-                                passTurnToNext();
+                                if (!checkWin) passTurnToNext();
                             }
                         })
                     }
@@ -543,9 +543,7 @@ function displayHands() {
             handDiv.appendChild(cardDiv);
         });
 
-        console.log(1, handDiv.querySelectorAll(".card").length);
         applyArcCircle(handDiv);
-        console.log(2, handDiv.querySelectorAll(".card").length);
     });
     cardSelection();
 }
@@ -567,6 +565,29 @@ function nextTurn() {
 function passTurnToNext() {
     nextTurn();
     socket.emit('endTurn', { roomCode: myRoomCode });
+}
+
+function checkWin() {
+    const teamRY = [...usableGameState["red"], ...usableGameState["yellow"]];
+    const teamBG = [...usableGameState["blue"], ...usableGameState["green"]];
+
+    let winners = null;
+    if (teamRY.every(p => p.status === "end")) winners = { label: "Rouge & Jaune gagnent !", colors: ["🔴","🟡"] };
+    if (teamBG.every(p => p.status === "end")) winners = { label: "Bleu & Vert gagnent !", colors: ["🔵","🟢"] };
+
+    if (winners) {
+        const overlay = document.getElementById("win-overlay");
+        document.getElementById("win-title").textContent = winners.label;
+        document.getElementById("win-colors").innerHTML = winners.colors.map(c =>
+            `<div style="font-size:28px">${c}</div>`
+        ).join("");
+        overlay.style.display = "flex";
+
+        document.getElementById("btn-replay").onclick = () => overlay.style.display = "none";
+        document.getElementById("btn-menu").onclick = () => location.reload();
+        return true;
+    }
+    return false;
 }
 
 const discardElement = document.getElementById("discard");
@@ -692,7 +713,7 @@ document.addEventListener("click", (event) => {
         pawnOnBoard = [];
         pawnsInHouse = [];
         needToMovePawn = false;
-        passTurnToNext();
+        if (!checkWin()) passTurnToNext();
         return;
     }
 });
@@ -734,7 +755,7 @@ discardElement.addEventListener("click", (event) => {
         selectedCard = null;
         
         if (!needToMovePawn) {
-            passTurnToNext();
+            if (!checkWin) passTurnToNext();
         } else {
             applyArcCircle(document.getElementById(`hand-${myColor}`));
         }

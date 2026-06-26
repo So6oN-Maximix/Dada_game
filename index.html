@@ -90,5 +90,16 @@
             <h3 style="margin-top: 0; color: #e9c46a;">Gérer les équipes</h3>
             <div id="host-players-list"></div>
         </div>
+
+        <div id="win-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; align-items:center; justify-content:center;">
+            <div style="background:#1a1a2e; border-radius:16px; padding:2.5rem 3rem; text-align:center; max-width:340px;">
+                <div style="font-size:52px;">🏆</div>
+                <h2 id="win-title" style="color:white; font-size:22px;">Rouge & Jaune gagnent !</h2>
+                <p style="color:#aaa; font-size:14px;">Tous les pions sont à l'arrivée</p>
+                <div id="win-colors" style="display:flex; gap:10px; justify-content:center; margin:1.5rem 0;"></div>
+                <button id="btn-replay" style="width:100%; padding:10px; border-radius:8px; border:none; background:#457b9d; color:white; font-size:15px; cursor:pointer; margin-bottom:10px;">Rejouer</button>
+                <button id="btn-menu" style="width:100%; padding:10px; border-radius:8px; border:1px solid #555; background:transparent; color:#aaa; font-size:15px; cursor:pointer;">Retour au menu</button>
+            </div>
+        </div>
     </body>
 </html>
