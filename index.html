@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Dada game</title>
+        <link rel="stylesheet" href="style.css">
+        <script src="board.js" defer></script>
+        <script src="/socket.io/socket.io.js" defer></script>
+        <script src="game.js" defer></script>
+    </head>
+
+    <body>
+        <div id="game-area">
+            <button id="btn-start-game" style="display: none;">LANCER LA PARTIE</button>
+            <div id="board-room-code" style="display: none;">CODE : ----</div>
+
+            <div id="name-red" class="board-player-name pseudo-red">En attente...</div>
+            <div id="name-blue" class="board-player-name pseudo-blue">En attente...</div>
+            <div id="name-yellow" class="board-player-name pseudo-yellow">En attente...</div>
+            <div id="name-green" class="board-player-name pseudo-green">En attente...</div>
+
+            <div id="exchange-overlay" style="display: none;">
+                <div class="exchange-box">
+                    <h3 id="exchange-title">Échange d'équipe</h3>
+                    <p style="color:#aaa; font-size:14px; margin-top:-10px;">Choisis une carte à donner à ton partenaire</p>
+                    
+                    <div class="exchange-slots">
+                        <div class="exchange-slot-wrapper">
+                            <span class="slot-label">Toi</span>
+                            <div id="my-exchange-slot" class="card empty">...</div>
+                        </div>
+                        <div class="exchange-slot-wrapper">
+                            <span class="slot-label" id="partner-slot-label">Partenaire</span>
+                            <div id="partner-exchange-slot" class="card empty">...</div>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-confirm-exchange" class="btn-primary" style="margin-top:25px; display:none;">Confirmer</button>
+                </div>
+            </div>
+            
+            <div id="main-menu">
+                <div class="menu-content">
+                    <h1 class="game-title">DADA <span>EN LIGNE</span></h1>
+                    
+                    <div class="pseudo-section">
+                        <label for="input-pseudo">Comment t'appelles-tu ?</label>
+                        <input type="text" id="input-pseudo" placeholder="Ton pseudo..." maxlength="12" autocomplete="off">
+                    </div>
+
+                    <div class="room-actions">
+                        <div class="action-card create-card">
+                            <div class="card-icon">👑</div>
+                            <h3>Héberger</h3>
+                            <p>Crée un salon et invite tes amis</p>
+                            <button id="btn-create-room" class="btn-primary">Générer un code</button>
+                            <div id="room-code-display" class="code-display"></div>
+                        </div>
+
+                        <div class="menu-divider">OU</div>
+
+                        <div class="action-card join-card">
+                            <div class="card-icon">🤝</div>
+                            <h3>Rejoindre</h3>
+                            <p>Entre le code d'un ami</p>
+                            <input type="text" id="input-room-code" placeholder="CODE" maxlength="4" autocomplete="off">
+                            <button id="btn-join-room" class="btn-secondary">Jouer !</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <svg viewBox="0 0 600 600" id="board">
+                <defs id="definition"></defs>
+                <g id="board-map"></g>
+            </svg>
+
+            <div id="board-wrapper">
+                <div id="discard" class="card empty">Vide</div>
+            </div>
+
+            <div id="hand-red" class="hand-container"></div>
+            <div id="hand-blue" class="hand-container"></div>
+            <div id="hand-yellow" class="hand-container"></div>
+            <div id="hand-green" class="hand-container"></div>
+        </div>
+
+        <div id="host-panel" style="display: none;">
+            <div id="host-toggle">⚙️ Équipes</div>
+            <h3 style="margin-top: 0; color: #e9c46a;">Gérer les équipes</h3>
+            <div id="host-players-list"></div>
+        </div>
+    </body>
+</html>

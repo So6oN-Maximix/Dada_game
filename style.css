@@ -1,0 +1,731 @@
+body {
+    background-color: #d4d4d4;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+
+#game-area {
+    position: relative;
+    width: 550px;
+    height: 550px;
+}
+
+svg {
+    background-image: url('https://img.freepik.com/photos-gratuite/arriere-plan-bois-naturel_24837-269.jpg?semt=ais_hybrid&w=740&q=80');
+    background-size: cover;
+    border-radius: 20px;
+    border: 5px solid rgb(55, 55, 55);
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+circle:hover {
+    fill: #ffffff;
+    cursor: pointer;
+}
+
+/* --- L'INTERFACE DES CARTES --- */
+
+/* La défausse clouée au centre du plateau */
+#discard {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 80px;
+    height: 115px;
+}
+
+/* --- CONTENEUR DE MAINS --- */
+.hand-container {
+    position: absolute;
+    display: flex;
+    padding: 25px 40px;
+    transition: all 0.4s ease-in-out;
+    z-index: 50;
+}
+
+.hand-container .card + .card {
+    margin-left: -30px; 
+}
+
+/* =========================================
+   🌟 POSITIONS DYNAMIQUES DES MAINS
+   ========================================= */
+.hand-left { top: 50%; left: -250px; transform: translateY(-50%) rotate(90deg); }
+.hand-left.active-hand { left: -150px; z-index: 60; }
+.hand-left.active-hand.receded { left: -250px; }
+
+.hand-top { top: -150px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.hand-top.active-hand { top: -30px; z-index: 60; }
+.hand-top.active-hand.receded { top: -150px; }
+
+.hand-right { top: 50%; right: -250px; transform: translateY(-50%) rotate(-90deg); }
+.hand-right.active-hand { right: -150px; z-index: 60; }
+.hand-right.active-hand.receded { right: -250px; }
+
+.hand-bottom { bottom: -150px; left: 50%; transform: translateX(-50%); }
+.hand-bottom.active-hand { bottom: -30px; z-index: 60; }
+.hand-bottom.active-hand.receded { bottom: -150px; }
+
+.hand-container:not(.active-hand) .card {
+    cursor: not-allowed;
+}
+.hand-container:not(.active-hand) .card:hover {
+    transform: translateY(var(--offsetY, 0)) rotate(var(--angle, 0));
+    box-shadow: -2px 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Le look d'une carte de base */
+.card {
+    width: 80px; 
+    height: 120px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Arial', sans-serif;
+    box-shadow: -2px 2px 8px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transform-origin: bottom center;
+    transform: translateY(var(--offsetY, 0)) rotate(var(--angle, 0));
+    transition: transform 0.2s, box-shadow 0.2s;
+    user-select: none;
+}
+
+.card.selected {
+    transform: translateY(calc(var(--offsetY, 0) - 30px)) rotate(var(--angle, 0)) ;
+    box-shadow: 0 0 15px 5px gold ;
+    border-color: gold ;
+    z-index: 101 ;
+}
+
+/* Le chiffre et le symbole en HAUT À GAUCHE */
+.card::before {
+    content: attr(data-value) "\A" attr(data-symbol);
+    white-space: pre;
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: -1px;
+}
+
+/* Le chiffre et le symbole en BAS À DROITE */
+.card::after {
+    content: attr(data-value) "\A" attr(data-symbol);
+    white-space: pre;
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: -1px;
+    transform: rotate(180deg);
+}
+
+/* Le gros symbole au centre */
+.card .center-sym {
+    font-size: 40px;
+}
+
+/* Effet au survol */
+.card:not(.empty):hover {
+    transform: translateY(calc(var(--offsetY, 0) - 20px)) rotate(var(--angle, 0));
+    box-shadow: 2px 15px 15px rgba(0,0,0,0.3);
+    z-index: 100 !important;
+}
+
+/* --- LES ETATS SPÉCIAUX --- */
+
+/* Masquer les coins pour les cartes vides ou de dos */
+.card.back::before, .card.back::after,
+.card.empty::before, .card.empty::after {
+    content: none;
+}
+
+/* Un vrai dos de carte avec un motif géométrique (sans utiliser d'image !) */
+.card.back { 
+    background: repeating-linear-gradient(45deg, #457b9d, #457b9d 10px, #1d3557 10px, #1d3557 20px);
+    border: 5px solid white;
+    color: transparent; 
+}
+
+.card.empty { background-color: rgba(255,255,255,0.5); border: 2px dashed #999; color: #999; cursor: default; }
+.card.red { color: #e63946; }
+.card.black { color: #222; }
+
+.card:not(.empty):hover {
+    transform: translateY(calc(var(--offsetY, 0) - 20px)) rotate(var(--angle, 0));
+    box-shadow: 2px 15px 15px rgba(0,0,0,0.3);
+    z-index: 2;
+}
+
+.card.back { background-color: #457b9d; color: white; }
+.card.empty { background-color: rgba(255,255,255,0.7); border: 2px dashed #666; color: #666; cursor: default; }
+.card.red { color: #e63946; }
+.card.black { color: #222; }
+
+.card.joker-style {
+    background: radial-gradient(circle, #fffdf0 0%, #fceabb 100%);
+    border: 2px solid #d4af37;
+    color: #2c3e50;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+}
+
+.card.joker-style .center-sym {
+    font-size: 50px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.card.joker-style:hover {
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.9);
+    border-color: #ffd700;
+}
+
+/* PION */
+
+.playable {
+    stroke: gold;
+    stroke-width: 4;
+    cursor: pointer;
+    filter: drop-shadow(0 0 5px gold);
+}
+
+.target-case {
+    fill: rgba(255, 255, 255, 0.4);
+    stroke: #ffffff;
+    stroke-width: 3;
+    stroke-dasharray: 5;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
+    cursor: pointer;
+    animation: pulse-case 1.5s infinite;
+}
+
+@keyframes pulse-case {
+    0% { opacity: 0.6; stroke-width: 2; }
+    50% { opacity: 1; stroke-width: 8; filter: drop-shadow(0 0 15px white); }
+    100% { opacity: 0.6; stroke-width: 2; }
+}
+
+/* --- POP-UP D'ERREUR (TOAST) --- */
+.game-popup {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(20, 20, 20, 0.9);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 12px;
+    font-family: 'Arial', sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border: 2px solid #e63946;
+    text-align: center;
+    pointer-events: none;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* La classe qu'on ajoutera en JS pour le faire disparaître */
+.game-popup.fade-out {
+    animation: fadeOut 0.5s forwards;
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+}
+
+/* MULTIPLAYER */
+#board, #board-wrapper, .hand-container {
+    display: none; 
+}
+/* =========================================
+   🌟 LE LOBBY MULTIJOUEUR (NOUVEAU DESIGN)
+   ========================================= */
+
+#main-menu {
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    width: max-content; 
+    height: auto;       
+    padding: 50px 70px;
+    border-radius: 30px;
+    
+    background: radial-gradient(circle at top, #212631, #0d0d12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.7);
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    animation: fadeInLobby 0.4s ease-out;
+}
+
+@keyframes fadeInLobby {
+    from { opacity: 0; backdrop-filter: blur(0px); }
+    to { opacity: 1; backdrop-filter: blur(10px); }
+}
+
+.menu-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    max-width: 800px;
+}
+
+/* --- LE TITRE --- */
+.game-title {
+    font-size: 55px;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+    text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.game-title span {
+    color: #e63946; 
+    background: -webkit-linear-gradient(45deg, #e63946, #ff7b54);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- SECTION PSEUDO --- */
+.pseudo-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40px;
+    width: 100%;
+}
+
+.pseudo-section label {
+    color: #a8dadc;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+#input-pseudo {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px; 
+    padding: 15px 30px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #e9c46a;
+    text-align: center;
+    width: 300px;
+    outline: none;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
+
+#input-pseudo:focus {
+    border-color: #e9c46a;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(233, 196, 106, 0.3), inset 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/* --- LES CARTES D'ACTION --- */
+.room-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.action-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 40px 30px;
+    width: 300px;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.action-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.card-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.action-card h3 {
+    color: white;
+    font-size: 24px;
+    margin: 0 0 10px 0;
+}
+
+.action-card p {
+    color: #888;
+    font-size: 14px;
+    margin: 0 0 25px 0;
+    line-height: 1.4;
+}
+
+/* --- INPUT CODE ET AFFICHAGE --- */
+#input-room-code {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 28px;
+    font-weight: 900;
+    color: #457b9d;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    transition: 0.3s;
+    margin-bottom: 15px;
+}
+
+#input-room-code:focus {
+    border-color: #457b9d;
+    background: rgba(69, 123, 157, 0.1);
+}
+
+.code-display {
+    font-size: 36px;
+    font-weight: 900;
+    color: #a8dadc;
+    letter-spacing: 10px;
+    margin-top: 20px;
+    height: 40px;
+    text-shadow: 0 0 15px rgba(168, 218, 220, 0.5);
+}
+
+/* --- BOUTONS --- */
+.btn-primary, .btn-secondary {
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: auto; 
+}
+
+.btn-primary {
+    background: #e63946;
+    box-shadow: 0 5px 15px rgba(230, 57, 70, 0.3);
+}
+
+.btn-primary:hover {
+    background: #ff4d5a;
+    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.5);
+    transform: scale(1.02);
+}
+
+.btn-secondary {
+    background: #457b9d;
+    box-shadow: 0 5px 15px rgba(69, 123, 157, 0.3);
+}
+
+.btn-secondary:hover {
+    background: #508cae;
+    box-shadow: 0 8px 20px rgba(69, 123, 157, 0.5);
+    transform: scale(1.02);
+}
+
+/* --- LE PETIT "OU" AU MILIEU --- */
+.menu-divider {
+    color: #666;
+    font-weight: bold;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 15px;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* =========================================
+   🌟 LES BADGES DE PSEUDOS SUR LE PLATEAU
+   ========================================= */
+
+.board-player-name {
+    position: absolute;
+    background: rgba(20, 20, 25, 0.85);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: bold;
+    font-size: 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    letter-spacing: 2px;
+    z-index: 40; 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    border: 2px solid;
+    pointer-events: none; 
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+}
+
+/* =========================================
+   🌟 COULEURS ET POSITIONS DES BADGES
+   ========================================= */
+.color-red { border-color: #e63946; color: #e63946; }
+.color-blue { border-color: #457b9d; color: #457b9d; }
+.color-yellow { border-color: #e9c46a; color: #e9c46a; }
+.color-green { border-color: #2a9d54; color: #2a9d54; }
+
+.pos-bottom { bottom: -60px; right: -15px; } 
+.pos-left { bottom: -15px; left: -130px; }   
+.pos-top { top: -60px; left: -15px; }        
+.pos-right { top: -15px; right: -130px; }
+
+/* --- BOUTON DE LANCEMENT SUR LE PLATEAU --- */
+#btn-start-game {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 40px;
+    font-size: 24px;
+    font-weight: 900;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #2a9d54 0%, #1c743d 100%);
+    color: white;
+    border: 3px solid #b7e4c7;
+    border-radius: 50px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+#btn-start-game:hover {
+    background: linear-gradient(135deg, #34c76b 0%, #228b4a 100%);
+    transform: translate(-50%, -55%) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    border-color: white;
+}
+
+/* --- BADGE CODE SALON SUR LE PLATEAU --- */
+#board-room-code {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    color: #a8dadc;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: 900;
+    font-size: 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    letter-spacing: 3px;
+    z-index: 100;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    pointer-events: none;
+    animation: pulse-code 2s infinite ease-in-out;
+}
+
+@keyframes pulse-code {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+        border-color: rgba(255, 255, 255, 0.1); 
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(168, 218, 220, 0.6);
+        border-color: rgba(168, 218, 220, 0.8); 
+    }
+    100% { 
+        transform: scale(1); 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+        border-color: rgba(255, 255, 255, 0.1); 
+    }
+}
+
+/* =========================================
+   🌟 MENU DE GESTION DES ÉQUIPES (HÔTE)
+   ========================================= */
+
+#host-panel {
+    position: fixed;
+    top: 50px;
+    right: -260px; /* Caché hors de l'écran par défaut */
+    width: 260px;
+    background: rgba(20, 20, 25, 0.95);
+    backdrop-filter: blur(10px);
+    border: 2px solid #e9c46a;
+    border-right: none;
+    border-radius: 20px 0 0 20px;
+    padding: 20px;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Animation fluide */
+    z-index: 2000;
+    box-shadow: -5px 5px 25px rgba(0,0,0,0.7);
+    box-sizing: border-box;
+}
+
+#host-panel.open {
+    right: 0; /* Sort de sa cachette ! */
+}
+
+#host-toggle {
+    position: absolute;
+    left: -48px;
+    top: 20px;
+    background: #e9c46a;
+    color: #222;
+    padding: 12px 10px;
+    border-radius: 10px 0 0 10px;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 14px;
+    box-shadow: -5px 0 10px rgba(0,0,0,0.5);
+    text-transform: uppercase;
+    writing-mode: vertical-rl; /* Écrit le texte à la verticale ! */
+    transform: rotate(180deg); /* Remet le texte dans le bon sens */
+}
+
+.host-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.host-player-row span {
+    font-weight: bold;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.host-player-row select {
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: 1px solid #457b9d;
+    border-radius: 5px;
+    padding: 5px;
+    outline: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* =========================================
+   🌟 PHASE D'ÉCHANGE (INTERFACE)
+   ========================================= */
+#exchange-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.exchange-box {
+    background: #1a1e26;
+    border: 2px solid #e9c46a;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+    width: 80%;
+    max-width: 400px;
+}
+
+.exchange-slots {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 30px;
+}
+
+.exchange-slot-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.slot-label {
+    color: #a8dadc;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* On force les cartes posées dans les slots à rester droites */
+.exchange-slot-wrapper .card {
+    transform: none !important;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    cursor: default;
+}
+
+.hand-container.exchange-active {
+    z-index: 1005;
+}
+
+.hand-bottom.exchange-active {
+    bottom: -30px;
+}
+
+.hand-bottom.exchange-active.exchange-selected {
+    bottom: -130px; 
+}

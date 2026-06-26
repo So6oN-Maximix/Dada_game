@@ -1,0 +1,108 @@
+{
+    "board": {
+        "red": [
+            {
+                "id": 1,
+                "status": "house",
+                "position": 1,
+                "color_side": "red"
+            },
+            {
+                "id": 2,
+                "status": "house",
+                "position": 2,
+                "color_side": "red"
+            },
+            {
+                "id": 3,
+                "status": "house",
+                "position": 3,
+                "color_side": "red"
+            },
+            {
+                "id": 4,
+                "status": "house",
+                "position": 4,
+                "color_side": "red"
+            }
+        ],
+        "blue": [
+            {
+                "id": 1,
+                "status": "house",
+                "position": 1,
+                "color_side": "blue"
+            },
+            {
+                "id": 2,
+                "status": "house",
+                "position": 2,
+                "color_side": "blue"
+            },
+            {
+                "id": 3,
+                "status": "house",
+                "position": 3,
+                "color_side": "blue"
+            },
+            {
+                "id": 4,
+                "status": "house",
+                "position": 4,
+                "color_side": "blue"
+            }
+        ],
+        "yellow": [
+            {
+                "id": 1,
+                "status": "house",
+                "position": 1,
+                "color_side": "yellow"
+            },
+            {
+                "id": 2,
+                "status": "house",
+                "position": 2,
+                "color_side": "yellow"
+            },
+            {
+                "id": 3,
+                "status": "house",
+                "position": 3,
+                "color_side": "yellow"
+            },
+            {
+                "id": 4,
+                "status": "house",
+                "position": 4,
+                "color_side": "yellow"
+            }
+        ],
+        "green": [
+            {
+                "id": 1,
+                "status": "house",
+                "position": 1,
+                "color_side": "green"
+            },
+            {
+                "id": 2,
+                "status": "house",
+                "position": 2,
+                "color_side": "green"
+            },
+            {
+                "id": 3,
+                "status": "house",
+                "position": 3,
+                "color_side": "green"
+            },
+            {
+                "id": 4,
+                "status": "house",
+                "position": 4,
+                "color_side": "green"
+            }
+        ]
+    }
+}
