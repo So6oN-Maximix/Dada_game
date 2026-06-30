@@ -2,14 +2,21 @@
 <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>Dada game</title>
+        <title>Dada — La Table</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="style.css">
         <script src="board.js" defer></script>
         <script src="/socket.io/socket.io.js" defer></script>
         <script src="game.js" defer></script>
+        <script src="bot.js" defer></script>
     </head>
 
     <body>
+
+        <!-- Lampe suspendue au-dessus de la table -->
+        <div id="table-lamp"></div>
+
         <div id="game-area">
             <button id="btn-start-game" style="display: none;">LANCER LA PARTIE</button>
             <div id="board-room-code" style="display: none;">CODE : ----</div>
@@ -21,55 +28,72 @@
 
             <div id="exchange-overlay" style="display: none;">
                 <div class="exchange-box">
+                    <span class="exchange-eyebrow">Pacte d'équipe</span>
                     <h3 id="exchange-title">Échange d'équipe</h3>
-                    <p style="color:#aaa; font-size:14px; margin-top:-10px;">Choisis une carte à donner à ton partenaire</p>
-                    
+                    <p class="exchange-sub">Choisis une carte à donner à ton partenaire</p>
+
                     <div class="exchange-slots">
                         <div class="exchange-slot-wrapper">
                             <span class="slot-label">Toi</span>
                             <div id="my-exchange-slot" class="card empty">...</div>
                         </div>
+                        <div class="exchange-link">⇄</div>
                         <div class="exchange-slot-wrapper">
                             <span class="slot-label" id="partner-slot-label">Partenaire</span>
                             <div id="partner-exchange-slot" class="card empty">...</div>
                         </div>
                     </div>
-                    
-                    <button id="btn-confirm-exchange" class="btn-primary" style="margin-top:25px; display:none;">Confirmer</button>
+
+                    <button id="btn-confirm-exchange" class="btn-primary" style="margin-top:25px; display:none;">Sceller l'échange</button>
                 </div>
             </div>
-            
+
             <div id="main-menu">
                 <div class="menu-content">
-                    <h1 class="game-title">DADA <span>EN LIGNE</span></h1>
-                    
-                    <div class="pseudo-section">
-                        <label for="input-pseudo">Comment t'appelles-tu ?</label>
-                        <input type="text" id="input-pseudo" placeholder="Ton pseudo..." maxlength="12" autocomplete="off">
-                    </div>
 
-                    <div class="room-actions">
-                        <div class="action-card create-card">
-                            <div class="card-icon">👑</div>
-                            <h3>Héberger</h3>
-                            <p>Crée un salon et invite tes amis</p>
-                            <button id="btn-create-room" class="btn-primary">Générer un code</button>
-                            <div id="room-code-display" class="code-display"></div>
+                    <div class="table-marker">
+
+                        <div class="marker-eyebrow">
+                            <span class="suit s-spade">♠</span>
+                            <span class="suit s-heart">♥</span>
+                            <span class="suit s-diamond">♦</span>
+                            <span class="suit s-club">♣</span>
                         </div>
 
-                        <div class="menu-divider">OU</div>
+                        <h1 class="game-title">Dada</h1>
+                        <p class="game-subtitle">la table en ligne</p>
 
-                        <div class="action-card join-card">
-                            <div class="card-icon">🤝</div>
-                            <h3>Rejoindre</h3>
-                            <p>Entre le code d'un ami</p>
-                            <input type="text" id="input-room-code" placeholder="CODE" maxlength="4" autocomplete="off">
-                            <button id="btn-join-room" class="btn-secondary">Jouer !</button>
+                        <div class="marker-rule"></div>
+
+                        <div class="pseudo-section">
+                            <label for="input-pseudo">Ton nom à la table</label>
+                            <input type="text" id="input-pseudo" placeholder="Pseudo" maxlength="12" autocomplete="off">
                         </div>
+
+                        <div class="room-actions">
+                            <div class="action-card create-card">
+                                <span class="action-seal">♛</span>
+                                <h3>Héberger</h3>
+                                <p>Ouvre une table et invite tes amis</p>
+                                <button id="btn-create-room" class="btn-primary">Ouvrir la table</button>
+                                <div id="room-code-display" class="code-display"></div>
+                            </div>
+
+                            <div class="menu-divider"><span>ou</span></div>
+
+                            <div class="action-card join-card">
+                                <span class="action-seal">♞</span>
+                                <h3>Rejoindre</h3>
+                                <p>Entre le code d'une table existante</p>
+                                <input type="text" id="input-room-code" placeholder="CODE" maxlength="4" autocomplete="off">
+                                <button id="btn-join-room" class="btn-secondary">S'asseoir</button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
-            
+
             <svg viewBox="0 0 600 600" id="board">
                 <defs id="definition"></defs>
                 <g id="board-map"></g>
@@ -86,19 +110,21 @@
         </div>
 
         <div id="host-panel" style="display: none;">
-            <div id="host-toggle">⚙️ Équipes</div>
-            <h3 style="margin-top: 0; color: #e9c46a;">Gérer les équipes</h3>
+            <div id="host-toggle">⚜ Table</div>
+            <span class="host-panel-eyebrow">Maître de table</span>
+            <h3>Composer les équipes</h3>
             <div id="host-players-list"></div>
         </div>
 
-        <div id="win-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; align-items:center; justify-content:center;">
-            <div style="background:#1a1a2e; border-radius:16px; padding:2.5rem 3rem; text-align:center; max-width:340px;">
-                <div style="font-size:52px;">🏆</div>
-                <h2 id="win-title" style="color:white; font-size:22px;">Rouge & Jaune gagnent !</h2>
-                <p style="color:#aaa; font-size:14px;">Tous les pions sont à l'arrivée</p>
-                <div id="win-colors" style="display:flex; gap:10px; justify-content:center; margin:1.5rem 0;"></div>
-                <button id="btn-replay" style="width:100%; padding:10px; border-radius:8px; border:none; background:#457b9d; color:white; font-size:15px; cursor:pointer; margin-bottom:10px;">Rejouer</button>
-                <button id="btn-menu" style="width:100%; padding:10px; border-radius:8px; border:1px solid #555; background:transparent; color:#aaa; font-size:15px; cursor:pointer;">Retour au menu</button>
+        <div id="win-overlay" style="display:none;">
+            <div class="win-card">
+                <div class="win-seal">♛</div>
+                <span class="win-eyebrow">Manche terminée</span>
+                <h2 id="win-title">Rouge & Jaune gagnent !</h2>
+                <p class="win-sub">Tous les pions sont à l'arrivée</p>
+                <div id="win-colors"></div>
+                <button id="btn-replay" class="btn-primary">Nouvelle donne</button>
+                <button id="btn-menu" class="btn-ghost">Retour à la table d'accueil</button>
             </div>
         </div>
     </body>
