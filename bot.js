@@ -199,10 +199,9 @@ function botGetPossibleMoves(botColor, cardValue) {
 
     // 4 — reculer
     if (cardValue === "4") {
-        allOnBoard.forEach(({ pawn, pawnColor }) => {
-            if (botIsUntouchable(pawn, pawnColor)) return;
-            let dest = botComputeDestination(pawn, pawnColor, -4);
-            if (dest) moves.push({ type: "move", pawn, pawnColor, dest, dist: -4 });
+        pawnsOnBoard.forEach(pawn => {
+            let dest = botComputeDestination(pawn, botColor, -4);
+            if (dest) moves.push({ type: "move", pawn, pawnColor: botColor, dest, dist: -4 });
         });
     }
 
@@ -232,20 +231,16 @@ function botGetSevenMoves(botColor, remaining, usedPawnIds, availablePawns) {
 
     availablePawns.forEach(pawn => {
         if (botIsUntouchable(pawn, botColor)) return;
-        const alreadyMoved = usedPawnIds.includes(pawn.id);
-        const maxDist = alreadyMoved ? remaining : remaining;
-        const minDist = (availablePawns.filter(p => !usedPawnIds.includes(p.id)).length === 1 || 
-                         (alreadyMoved && usedPawnIds.length === 1)) ? remaining : 1;
+        if (usedPawnIds.includes(pawn.id)) return;
+        const minDist = (availablePawns.filter(p => !usedPawnIds.includes(p.id)).length === 1) ? remaining : 1;
 
-        for (let d = minDist; d <= maxDist; d++) {
+        for (let d = minDist; d <= remaining; d++) {
             let dest = botComputeDestination(pawn, botColor, d);
             if (!dest) continue;
-            // Un pion qui a mangé ne peut plus bouger
-            if (dest.occupant && alreadyMoved) continue;
 
             let subMoves = botGetSevenMoves(
                 botColor, remaining - d,
-                alreadyMoved ? usedPawnIds : [...usedPawnIds, pawn.id],
+                [...usedPawnIds, pawn.id],
                 availablePawns
             );
             subMoves.forEach(sub => results.push([{ pawn, pawnColor: botColor, dest, dist: d }, ...sub]));
@@ -386,6 +381,15 @@ function botExecuteMove(move, botColor, onDone) {
     if (!move) { if (onDone) onDone(); return; }
 
     if (move.type === "exit") {
+        let occupant = isPawnAtSelection(0, botColor, "board");
+        if (occupant && occupant.color !== botColor) {
+            occupant.pawn.status = "house";
+            occupant.pawn.position = occupant.pawn.id;
+            occupant.pawn.color_side = occupant.color;
+            drawPawn(occupant.pawn, occupant.color);
+            botEmitMovePawn(occupant.pawn, occupant.color);
+        }
+        
         move.pawn.status = "board";
         move.pawn.position = 0;
         move.pawn.color_side = botColor;

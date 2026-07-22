@@ -334,13 +334,6 @@ function playCard(cardValue) {
                 }
             });
         }
-        if (allPawnsOnBoard.length > 0) {
-            allPawnsOnBoard.forEach(pawnData => {
-                if (pawnData.pawn_color !== myColor) {
-                    setupMovement(pawnData.pawn, pawnData.pawn_color, -4);
-                }
-            });
-        }
     }
     if (cardValue === "5") {
         const teamsByColor = { red: ["red","yellow"], yellow: ["red","yellow"], blue: ["blue","green"], green: ["blue","green"] };
@@ -376,7 +369,6 @@ function playSeven() {
         sevenCredit = 0;
         pawnMovedDuringSeven = [];
         needToMovePawn = false;
-        if (!checkWin()) passTurnToNext();
         return;
     }
 
@@ -576,9 +568,15 @@ function nextTurn() {
 
     const isRoundOver = players.every(p => playersHands[p].length === 0);
     if (isRoundOver && myAssignedColor === "red") {
-        distributeCards();
-        socket.emit('syncHands', { roomCode: myRoomCode, hands: playersHands });
-        startExchangePhase();
+        roundStarterIndex = (roundStarterIndex + 1) % 4;
+        currentPlayerIndex = roundStarterIndex;
+        myColor = players[currentPlayerIndex];
+
+        if (myAssignedColor === "red") {
+            distributeCards();
+            socket.emit('syncHands', { roomCode: myRoomCode, hands: playersHands });
+            startExchangePhase();
+        }
         return;
     }
     
@@ -744,6 +742,9 @@ document.addEventListener("click", (event) => {
             pawnMovedDuringSeven.push(selectedPawn.id);
             if (sevenCredit > 0) {
                 playSeven();
+                if (!needToMovePawn) {
+                    if (!checkWin()) passTurnToNext();
+                }
                 return;
             }
         }
@@ -1121,6 +1122,7 @@ function executeSwapsLocally() {
         
         displayHands();
         showPopUp(`La manche commence ! Au tour des ${myColor.toUpperCase()} !`);
+        handleBotTurnIfNeeded(myColor);
     }
 }
 
@@ -1261,6 +1263,7 @@ socket.on('pawnMoved', (data) => {
     }
     drawPawn(data.pawnData, data.pawnColor);
     saveGameState();
+    checkWin();
 });
 
 socket.on('turnChanged', () => nextTurn());
