@@ -115,7 +115,7 @@ function loadPosition() {
                 }
             });
     }
-    }
+}
 
 function saveGameState() {
     localStorage.setItem("game_state", JSON.stringify(usableGameState));
@@ -130,7 +130,7 @@ function drawAllPawns() {
     }
 }
 
-function setupMovement(pawn, pawnColor, toMove, isKing = false) {
+function setupMovement(pawn, pawnColor, toMove, isKing = false, allowEnd = true) {
     let isInsideHouse = (pawn.status === "end");
     let targetStatus = "board";
     let finalPosition = 0;
@@ -157,7 +157,7 @@ function setupMovement(pawn, pawnColor, toMove, isKing = false) {
         let teamColorIndex = colorSides.indexOf(pawnColor);
         let previousColor = colorSides[(teamColorIndex + 3) % 4];
 
-        if (pawn.color_side === previousColor && toMove > 0 && newPlace > 20) {
+        if (allowEnd && pawn.color_side === previousColor && toMove > 0 && newPlace > 20) {
             let step = newPlace - 20;
             if (step <= 4) {
                 let isBlocked = false;
@@ -327,11 +327,25 @@ function playCard(cardValue) {
         }
     }
     if (cardValue === "4") {
-        if (allPawnsOnBoard.length > 0) allPawnsOnBoard.forEach(pawnData => setupMovement(pawnData.pawn, pawnData.pawn_color, -4));
+        if (pawnOnBoard.length > 0) {
+            pawnOnBoard.forEach(pawn => {
+                if (pawn.status === "board") {
+                    setupMovement(pawn, myColor, -4);
+                }
+            });
+        }
+        if (allPawnsOnBoard.length > 0) {
+            allPawnsOnBoard.forEach(pawnData => {
+                if (pawnData.pawn_color !== myColor) {
+                    setupMovement(pawnData.pawn, pawnData.pawn_color, -4);
+                }
+            });
+        }
     }
     if (cardValue === "5") {
-        let allPawnsOnBoardExeptMyColor = allPawnsOnBoard.filter(pawnData => pawnData.pawn_color !== myColor);
-        if (allPawnsOnBoardExeptMyColor.length > 0) allPawnsOnBoardExeptMyColor.forEach(pawnData => setupMovement(pawnData.pawn, pawnData.pawn_color, 5));
+        const teamsByColor = { red: ["red","yellow"], yellow: ["red","yellow"], blue: ["blue","green"], green: ["blue","green"] };
+        let allPawnsOnBoardOpponents = allPawnsOnBoard.filter(pawnData => !teamsByColor[myColor].includes(pawnData.pawn_color));
+        if (allPawnsOnBoardOpponents.length > 0) allPawnsOnBoardOpponents.forEach(pawnData => setupMovement(pawnData.pawn, pawnData.pawn_color, 5, false, false));
     }
 
     if (cardValue === "7") {
@@ -347,117 +361,92 @@ function playCard(cardValue) {
 
 function playSeven() {
     needToMovePawn = true;
-    let myPawnsOnBoard = usableGameState[myColor].filter(pawn => (pawn.status === "board" || pawn.status === "end") && !pawnMovedDuringSeven.includes(pawn.id));
+    let availablePawns = usableGameState[myColor].filter(pawn =>
+        (pawn.status === "board" || pawn.status === "end") &&
+        !pawnMovedDuringSeven.includes(pawn.id)
+    );
 
-    if (myPawnsOnBoard.length === 0) {
-        showPopUp("Plus aucun pion pour finir le 7 !");
-        sevenCredit = 0;
-        needToMovePawn = false;
-        return;
-    }
-
-    let minimalDistance = (myPawnsOnBoard.length === 1) ? sevenCredit : 1;
-    let anyMovePossible = false;
-    myPawnsOnBoard.forEach(pawn => {
-        for (let i = minimalDistance; i <= sevenCredit; i++) {
-            let dest = setupMovement(pawn, myColor, i, false);
-            if (dest !== undefined) { anyMovePossible = true; break; }
+    let validCombos = getSevenCombos(sevenCredit, availablePawns, myColor);
+    if (validCombos.length === 0) {
+        if (sevenCredit === 7) {
+            showPopUp("Impossible de jouer le 7 avec tes pions !");
+        } else {
+            showPopUp("Plus aucun mouvement possible pour finir le 7 !");
         }
-    });
-
-    if (!anyMovePossible) {
-        showPopUp("Impossible de finir le 7 !");
         sevenCredit = 0;
+        pawnMovedDuringSeven = [];
         needToMovePawn = false;
         if (!checkWin()) passTurnToNext();
         return;
     }
 
-    myPawnsOnBoard.forEach(pawn => {
+    let validFirstMoves = [];
+    validCombos.forEach(combo => {
+        let firstMove = combo[0];
+        if (!validFirstMoves.some(m => m.pawn.id === firstMove.pawn.id && m.dist === firstMove.dist)) {
+            validFirstMoves.push(firstMove);
+        }
+    });
+
+    let playablePawnIds = [...new Set(validFirstMoves.map(m => m.pawn.id))];
+    playablePawnIds.forEach(pawnId => {
+        let pawn = availablePawns.find(p => p.id === pawnId);
         const boardPawn = document.getElementById(`pion-${myColor}-${pawn.id}`);
+        boardPawn.classList.add("playable");
+
         boardPawn.onclick = (event) => {
             if (boardPawn.classList.contains("target-case")) return;
             event.stopPropagation();
-            clearSelections();
+            
+            clearSelections(true);
             boardPawn.classList.add("playable");
+
             selectedPawn = pawn;
             selectedPawn.pawn_color = myColor;
 
-            for (let i = minimalDistance; i <= sevenCredit; i++) {
-                let isInsideHouse = (pawn.status === "end");
-                let targetStatus = "board";
-                let finalPosition = 0;
-                let finalColor = "";
-                let isPawnAtDestination = null;
-                let isEnteringHouse = false;
+            let pawnMoves = validFirstMoves.filter(m => m.pawn.id === pawnId);
 
-                if (isInsideHouse) {
-                    let newPlace = pawn.position + i;
-                    if (newPlace > 4) continue;
+            pawnMoves.forEach(move => {
+                let dest = move.dest;
+                let targetVisual;
 
-                    let isBlocked = false;
-                    for (let step = pawn.position + 1; step <= newPlace; step++) {
-                        if (isPawnAtSelection(step, myColor, "end")) {isBlocked = true; break;}
-                    }
-                    if (isBlocked) continue;
-
-                    finalPosition = newPlace;
-                    finalColor = myColor;
-                    targetStatus = "end";
-                    isEnteringHouse = true;
+                if (dest.status === "end") {
+                    targetVisual = document.getElementById(`end-${dest.color_side}-${dest.position}`);
+                } else if (dest.occupant) {
+                    targetVisual = document.getElementById(`pion-${dest.occupant.color}-${dest.occupant.pawn.id}`);
                 } else {
-                    let currentPlace = pawn.position;
-                    let newPlace = currentPlace + i;
-                    let teamColorIndex = colorSides.indexOf(myColor);
-                    let previousColor = colorSides[(teamColorIndex + 3) % 4];
-
-                    if (pawn.color_side === previousColor && newPlace > 21) {
-                        let step = newPlace - 21;
-                        if (step <= 4) {
-                            let isBlocked = false;
-                            for (let j = 1; j <= step; j++) {
-                                if (isPawnAtSelection(j, myColor, "end")) { isBlocked = true; break; }
-                            }
-                            if (!isBlocked) {
-                                finalPosition = step;
-                                finalColor = myColor;
-                                targetStatus = "end";
-                                isEnteringHouse = true;
-                            }
-                        }
-                    }
-                    
-                    if (!isEnteringHouse) {
-                        finalPosition = ((newPlace % 22) + 22) % 22;
-                        let colorShift = Math.floor(newPlace / 22); 
-                        let finalColorIndex = (colorSides.indexOf(pawn.color_side) + colorShift + 4) % 4;
-                        finalColor = colorSides[finalColorIndex];
-                        
-                        isPawnAtDestination = isPawnAtSelection(finalPosition, finalColor, "board");
-                    }
+                    targetVisual = document.getElementById(`${dest.color_side}-${dest.position}`);
                 }
-
-                if (isEnteringHouse || !isPawnAtDestination || isPawnAtDestination.color !== myColor) {
-                    let targetVisual;
-                    if (isEnteringHouse) {
-                        targetVisual = document.getElementById(`end-${finalColor}-${finalPosition}`);
-                    } else if (isPawnAtDestination) {
-                        targetVisual = document.getElementById(`pion-${isPawnAtDestination.color}-${isPawnAtDestination.pawn.id}`);
-                    } else {
-                        targetVisual = document.getElementById(`${finalColor}-${finalPosition}`);
-                    }
-                    
-                    if (targetVisual) {
-                        targetVisual.classList.add("target-case");
-                        targetVisual.setAttribute("data-destination-color", finalColor);
-                        targetVisual.setAttribute("data-destination-position", finalPosition);
-                        targetVisual.setAttribute("data-target-status", targetStatus);
-                        targetVisual.setAttribute("data-distance", i);
-                    }
+                
+                if (targetVisual) {
+                    targetVisual.classList.add("target-case");
+                    targetVisual.setAttribute("data-destination-color", dest.color_side);
+                    targetVisual.setAttribute("data-destination-position", dest.position);
+                    targetVisual.setAttribute("data-target-status", dest.status);
+                    targetVisual.setAttribute("data-distance", move.dist);
                 }
+            });
+        };
+    });
+}
+
+function getSevenCombos(credit, pawnsLeft, pawnColor) {
+    if (credit === 0) return [[]];
+    if (pawnsLeft.length === 0) return [];
+
+    let results = [];
+    pawnsLeft.forEach(pawn => {
+        let minDist = (pawnsLeft.length === 1) ? credit : 1;
+        for (let d = minDist; d <= credit; d++) {
+            let dest = botComputeDestination(pawn, pawnColor, d);
+            if (dest) {
+                let remainingPawns = pawnsLeft.filter(p => p.id !== pawn.id);
+                let subCombos = getSevenCombos(credit - d, remainingPawns, pawnColor);
+                subCombos.forEach(sub => results.push([{ pawn: pawn, dist: d, dest: dest }, ...sub]));
             }
         }
     });
+    return results;
 }
 
 function clearSelections() {
@@ -601,7 +590,7 @@ function nextTurn() {
 
 function passTurnToNext() {
     nextTurn();
-    socket.emit('endTurn', { roomCode: myRoomCode });
+    socket.emit('endTurn', { roomCode: myRoomCode, currentPlayerIndex: currentPlayerIndex });
 }
 
 function checkWin() {
@@ -621,11 +610,24 @@ function checkWin() {
         overlay.style.display = "flex";
 
         document.getElementById("btn-replay").onclick = () => overlay.style.display = "none";
-        document.getElementById("btn-menu").onclick = () => location.reload();
+        document.getElementById("btn-menu").onclick = () => {
+            localStorage.removeItem("dada_pseudo");
+            localStorage.removeItem("dada_room");
+            location.reload()
+        };
         return true;
     }
     return false;
 }
+
+const btnLeaveRoom = document.getElementById("btn-leave-room");
+
+btnLeaveRoom.addEventListener("click", () => {
+    socket.emit("leaveRoom", { roomCode: myRoomCode });
+    localStorage.removeItem("dada_room");
+    localStorage.removeItem("game_state");
+    location.reload();
+});
 
 const discardElement = document.getElementById("discard");
 let selectedCard = null;
@@ -647,7 +649,6 @@ const correspondanceCase = {
     "JOKER": 18
 }
 let usableGameState = {};
-localStorage.removeItem("game_state");
 let pawnsInHouse = [];
 let pawnOnBoard = [];
 let sevenCredit = 0;
@@ -826,6 +827,7 @@ function goToTableLocally() {
     mainMenu.style.display = "none";
     document.getElementById("board").style.display = "block";
     document.getElementById("board-wrapper").style.display = "block";
+    btnLeaveRoom.style.display = "block";
     document.querySelectorAll(".hand-container").forEach(el => el.style.display = "flex");
 
     if (myAssignedColor) orientBoard(myAssignedColor);
@@ -1132,6 +1134,7 @@ btnCreateRoom.addEventListener("click", () => {
         alert("Veuillez entrer un pseudo d'au moins 2 caractères !");
         return;
     }
+    localStorage.setItem("dada_pseudo", myPseudo);
     btnCreateRoom.textContent = "Création...";
     socket.emit('createRoom', { pseudo: myPseudo }); 
 });
@@ -1144,6 +1147,8 @@ btnJoinRoom.addEventListener("click", () => {
         return;
     }
     if (code.length === 4) {
+        localStorage.setItem("dada_pseudo", myPseudo);
+        localStorage.setItem("dada_room", code);
         btnJoinRoom.textContent = "Connexion...";
         socket.emit('joinRoom', { code: code, pseudo: myPseudo });
     } else {
@@ -1163,6 +1168,7 @@ btnStartGame.addEventListener("click", () => {
 socket.on('roomCreated', (data) => {
     myAssignedColor = data.color;
     myRoomCode = data.code;
+    localStorage.setItem("dada_room", data.code);
 
     isHost = true;
     document.getElementById("host-panel").style.display = "block";
@@ -1263,4 +1269,64 @@ socket.on('errorMsg', (msg) => {
     alert(msg);
     btnJoinRoom.textContent = "Rejoindre";
     btnCreateRoom.textContent = "Générer un code";
+});
+
+// Tentative de reconnexion automatique
+const savedPseudo = localStorage.getItem("dada_pseudo");
+const savedRoom = localStorage.getItem("dada_room");
+console.log("Tentative rejoin:", savedPseudo, savedRoom);
+
+if (savedPseudo && savedRoom) {
+    myPseudo = savedPseudo;
+    socket.emit("rejoinRoom", { pseudo: savedPseudo, code: savedRoom });
+}
+
+socket.on("rejoinSuccess", (data) => {
+    console.log("rejoinSuccess reçu:", data);
+    myAssignedColor = data.color;
+    myRoomCode = data.code;
+    isHost = data.isHost;
+
+    if (isHost) document.getElementById("host-panel").style.display = "block";
+
+    const codeBadge = document.getElementById("board-room-code");
+    codeBadge.style.display = "block";
+    codeBadge.textContent = `CODE : ${data.code}`;
+
+    if (data.gameStarted) {
+        currentPlayerIndex = data.currentPlayerIndex || 0;
+        myColor = players[currentPlayerIndex];
+        goToTableLocally();
+        if (data.hands) {
+            playersHands = data.hands;
+            displayHands();
+        }
+    } else if (isHost) {
+        mainMenu.style.display = "none";
+        btnStartGame.style.display = "block";
+        document.getElementById("board").style.display = "block";
+        if (myAssignedColor) orientBoard(myAssignedColor);
+    } else {
+        mainMenu.style.display = "none";
+        document.getElementById("board").style.display = "block";
+        if (myAssignedColor) orientBoard(myAssignedColor);
+    }
+
+    showPopUp("Reconnecté à la table !");
+});
+
+socket.on("rejoinFailed", () => {
+    console.log("rejoinFailed reçu");
+    localStorage.removeItem("dada_pseudo");
+    localStorage.removeItem("dada_room");
+});
+
+socket.on("serverInstance", (data) => {
+    const lastKnownInstance = localStorage.getItem("dada_server_instance");
+    if (lastKnownInstance && lastKnownInstance !== data.id) {
+        localStorage.removeItem("dada_pseudo");
+        localStorage.removeItem("dada_room");
+        localStorage.removeItem("game_state");
+    }
+    localStorage.setItem("dada_server_instance", data.id);
 });

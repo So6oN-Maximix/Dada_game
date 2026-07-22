@@ -3,6 +3,8 @@ const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 
+const serverInstanceId = Date.now().toString();
+
 app.use(express.static(__dirname));
 
 const rooms = {};
@@ -14,10 +16,25 @@ function generateRoomCode() {
     return code;
 }
 
+function removePlayerFromRoom(socket, roomCode) {
+    let room = rooms[roomCode];
+    if (room) {
+        room.players = room.players.filter(p => p.id !== socket.id);
+        
+        if (room.players.length === 0) {
+            delete rooms[roomCode];
+            console.log(`Salle ${roomCode} supprimée car vide.`);
+        } else {
+            socket.to(roomCode).emit("updatePlayers", room.players);
+        }
+    }
+}
+
 const colorOrder = ["red", "blue", "yellow", "green"];
 
 io.on("connection", (socket) => {
     console.log("Un joueur est connecté : " + socket.id);
+    socket.emit("serverInstance", { id: serverInstanceId });
 
     socket.on("createRoom", (data) => {
         let roomCode = generateRoomCode();
@@ -30,7 +47,7 @@ io.on("connection", (socket) => {
         socket.join(roomCode);
         socket.emit("roomCreated", { code: roomCode, color: colorOrder[0] });
         
-        io.to(roomCode).emit("updatePlayers", rooms[roomCode].players); 
+        io.to(roomCode).emit("updatePlayers", rooms[roomCode].players);
     });
 
     // Quand un joueur REJOINT un salon
@@ -55,10 +72,48 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("syncHands", (data) => socket.to(data.roomCode).emit("receiveHands", data.hands));
+    // Reconnexion après un reload : on retrouve le joueur par pseudo + code
+    socket.on("rejoinRoom", (data) => {
+        let room = rooms[data.code];
+        if (!room) {
+            socket.emit("rejoinFailed");
+            return;
+        }
+        let player = room.players.find(p => p.pseudo === data.pseudo);
+        if (!player) {
+            socket.emit("rejoinFailed");
+            return;
+        }
+
+        player.id = socket.id;
+        socket.join(data.code);
+
+        socket.emit("rejoinSuccess", {
+            code: data.code,
+            color: player.color,
+            isHost: room.players[0].pseudo === data.pseudo,
+            gameStarted: !!room.gameStarted,
+            hands: room.hands || null,
+            currentPlayerIndex: room.currentPlayerIndex || 0
+        });
+        io.to(data.code).emit("updatePlayers", room.players);
+    });
+
+    socket.on("syncHands", (data) => {
+        let room = rooms[data.roomCode];
+        if (room) {
+            room.hands = data.hands;
+            room.gameStarted = true
+        };
+        socket.to(data.roomCode).emit("receiveHands", data.hands);
+    });
     socket.on("playCard", (data) => socket.to(data.roomCode).emit("cardPlayed", data));
     socket.on("lockExchange", (data) => socket.to(data.roomCode).emit("teamExchangeLocked", data));
-    socket.on("endTurn", (data) => socket.to(data.roomCode).emit("turnChanged"));
+    socket.on("endTurn", (data) => {
+        let room = rooms[data.roomCode];
+        if (room) room.currentPlayerIndex = data.currentPlayerIndex;
+        socket.to(data.roomCode).emit("turnChanged");
+    });
     socket.on("movePawn", (data) => socket.to(data.roomCode).emit("pawnMoved", data));
 
     socket.on('changePlayerColor', (data) => {
@@ -78,8 +133,21 @@ io.on("connection", (socket) => {
         }
     });
 
+    socket.on("leaveRoom", (data) => {
+        socket.leave(data.roomCode);
+        removePlayerFromRoom(socket, data.roomCode);
+    });
+
     socket.on("disconnect", () => {
         console.log("Déconnexion : " + socket.id);
+        
+        for (let code in rooms) {
+            let playerExists = rooms[code].players.some(p => p.id === socket.id);
+            if (playerExists) {
+                removePlayerFromRoom(socket, code);
+                break;
+            }
+        }
     });
 });
 

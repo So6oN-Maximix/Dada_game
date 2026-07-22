@@ -28,7 +28,7 @@ function botGetEnemies(color) {
 }
 
 // Calcule la destination d'un pion après N cases (retourne null si invalide)
-function botComputeDestination(pawn, pawnColor, toMove) {
+function botComputeDestination(pawn, pawnColor, toMove, allowEnd = true) {
     if (pawn.status === "end") {
         if (toMove < 0) return null;
         let newPlace = pawn.position + toMove;
@@ -45,7 +45,7 @@ function botComputeDestination(pawn, pawnColor, toMove) {
     let previousColor = colorSides[(teamColorIndex + 3) % 4];
 
     // Entrée dans l'arrivée
-    if (pawn.color_side === previousColor && toMove > 0 && newPlace > 20) {
+    if (allowEnd && pawn.color_side === previousColor && toMove > 0 && newPlace > 20) {
         let step = newPlace - 20;
         if (step <= 4) {
             for (let i = 1; i <= step; i++) {
@@ -54,6 +54,15 @@ function botComputeDestination(pawn, pawnColor, toMove) {
             return { status: "end", position: step, color_side: pawnColor };
         }
         return null;
+    }
+
+    for (let i = 1; i < toMove; i++) {
+        let pathPlace = pawn.position + i;
+        let pathPos = ((pathPlace % 22) + 22) % 22;
+        let pathColorShift = Math.floor(pathPlace / 22);
+        let pathColor = colorSides[(colorSides.indexOf(pawn.color_side) + pathColorShift + 4) % 4];
+        let pathOccupant = isPawnAtSelection(pathPos, pathColor, "board");
+        if (pathOccupant && pathOccupant.pawn.position === 0 && pathOccupant.color === pathColor) return null;
     }
 
     let finalPosition = ((newPlace % 22) + 22) % 22;
@@ -202,7 +211,7 @@ function botGetPossibleMoves(botColor, cardValue) {
         allOnBoard.forEach(({ pawn, pawnColor }) => {
             if (!enemies.includes(pawnColor)) return;
             if (botIsUntouchable(pawn, pawnColor)) return;
-            let dest = botComputeDestination(pawn, pawnColor, 5);
+            let dest = botComputeDestination(pawn, pawnColor, 5, false);
             if (dest) moves.push({ type: "move_enemy", pawn, pawnColor, dest, dist: 5 });
         });
     }
