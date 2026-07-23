@@ -94,7 +94,8 @@ io.on("connection", (socket) => {
             isHost: room.players[0].pseudo === data.pseudo,
             gameStarted: !!room.gameStarted,
             hands: room.hands || null,
-            currentPlayerIndex: room.currentPlayerIndex || 0
+            currentPlayerIndex: room.currentPlayerIndex || 0,
+            gameState: room.gameState || null
         });
         io.to(data.code).emit("updatePlayers", room.players);
     });
@@ -131,6 +132,11 @@ io.on("connection", (socket) => {
                 io.to(data.roomCode).emit('updatePlayers', room.players);
             }
         }
+    });
+
+    socket.on("updateGameState", (data) => {
+        let room = rooms[data.roomCode];
+        if (room) room.gameState = data.gameState;
     });
 
     socket.on("leaveRoom", (data) => {

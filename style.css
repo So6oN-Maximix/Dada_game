@@ -860,3 +860,83 @@ circle:hover { fill: #ffffff; cursor: pointer; }
     margin-bottom: 26px;
     font-size: 26px;
 }
+
+/* =====================================================
+   RESPONSIVE DESIGN (Mobiles & Tablettes)
+===================================================== */
+
+/* Écrans de taille moyenne (Tablettes et petits ordinateurs) */
+@media (max-width: 850px) {
+    /* 1. Menu Principal : on passe l'affichage en colonne */
+    .table-marker {
+        width: 90vw;
+        padding: 30px 20px;
+    }
+    .room-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .action-card {
+        width: 100%;
+        padding: 20px 15px;
+    }
+    .menu-divider {
+        padding: 15px 0;
+    }
+    .game-title {
+        font-size: 50px;
+    }
+    #input-pseudo {
+        width: 100%;
+        max-width: 260px;
+    }
+
+    /* 2. Plateau de jeu : réduction proportionnelle globale */
+    #game-area {
+        transform: scale(0.75);
+    }
+    
+    /* 3. Panel Hôte : on le rend un peu plus compact */
+    #host-panel {
+        width: 240px;
+        right: -250px;
+    }
+    #host-panel.open {
+        right: 0;
+    }
+}
+
+/* Petits écrans (Smartphones classiques) */
+@media (max-width: 550px) {
+    #game-area {
+        transform: scale(0.55);
+    }
+    
+    .game-title {
+        font-size: 38px;
+    }
+    
+    /* Ajustement des pop-ups pour ne pas déborder */
+    .exchange-box, .win-card {
+        padding: 25px 20px;
+        width: 90%;
+    }
+    .exchange-slots {
+        gap: 5px;
+    }
+    
+    /* Repositionnement du bouton "Quitter la table" */
+    #btn-leave-room {
+        top: 10px;
+        right: 10px;
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+}
+
+/* Très petits écrans (Anciens smartphones) */
+@media (max-width: 400px) {
+    #game-area {
+        transform: scale(0.45);
+    }
+}

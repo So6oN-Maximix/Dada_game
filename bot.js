@@ -583,7 +583,7 @@ function isBotColor(color) {
 // Appelé au début de chaque tour
 function handleBotTurnIfNeeded(color) {
     if (isBotColor(color)) {
-        botPlayTurn(color);
+        if (isHost) botPlayTurn(color);
         return true;
     }
     return false;

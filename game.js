@@ -120,6 +120,7 @@ function loadPosition() {
 function saveGameState() {
     localStorage.setItem("game_state", JSON.stringify(usableGameState));
     console.log("Partie Sauvegardée !!\n");
+    if (myRoomCode) socket.emit("updateGameState", { roomCode: myRoomCode, gameState: usableGameState });
 }
 
 function drawAllPawns() {
@@ -572,7 +573,7 @@ function nextTurn() {
         currentPlayerIndex = roundStarterIndex;
         myColor = players[currentPlayerIndex];
 
-        if (myAssignedColor === "red") {
+        if (isHost) {
             distributeCards();
             socket.emit('syncHands', { roomCode: myRoomCode, hands: playersHands });
             startExchangePhase();
@@ -1289,6 +1290,11 @@ socket.on("rejoinSuccess", (data) => {
     myAssignedColor = data.color;
     myRoomCode = data.code;
     isHost = data.isHost;
+
+    if (data.gameState) {
+        usableGameState = data.gameState;
+        localStorage.setItem("game_state", JSON.stringify(usableGameState));
+    }
 
     if (isHost) document.getElementById("host-panel").style.display = "block";
 
