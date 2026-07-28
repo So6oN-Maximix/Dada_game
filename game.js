@@ -947,6 +947,7 @@ function getTeammate(color) {
 }
 
 function startExchangePhase() {
+    console.trace("startExchangePhase APPELÉE - teamExchanges avant reset:", JSON.parse(JSON.stringify(teamExchanges || {})));
     console.log("startExchangePhase - isHost:", isHost, "realPlayers:", realPlayers);
     teamExchanges = {};
     isExchangePhase = true;
