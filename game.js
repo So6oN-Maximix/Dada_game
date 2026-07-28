@@ -235,9 +235,11 @@ function playCard(cardValue) {
     pawnsInHouse = usableGameState[myColor].filter(pawn => pawn.status === "house");
 
     let allPawnsOnBoard = [];
+    let allPawnsOnBoardForValet = [];
     for (const color of colorSides) {
         for (const pawn of usableGameState[color]) {
             if (pawn.status === "board") {
+                allPawnsOnBoardForValet.push({pawn: pawn, pawn_color: color});
                 const isUntouchable = pawn.position === 0 && pawn.color_side === color;
                 if (!isUntouchable) allPawnsOnBoard.push({pawn: pawn, pawn_color: color});
             }
@@ -301,6 +303,9 @@ function playCard(cardValue) {
                                 drawPawn(pawnData.pawn, pawnData.pawn_color);
                                 drawPawn(pawnDatas.pawn, pawnDatas.pawn_color);
                                 saveGameState();
+
+                                socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnData.pawn }, pawnColor: pawnData.pawn_color });
+                                socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnDatas.pawn }, pawnColor: pawnDatas.pawn_color });
 
                                 for (const color of colorSides) {
                                     for (let i = 1; i <= 4; i++) {
@@ -568,14 +573,18 @@ function nextTurn() {
     myColor = players[currentPlayerIndex];
 
     const isRoundOver = players.every(p => playersHands[p].length === 0);
-    if (isRoundOver && myAssignedColor === "red") {
-        roundStarterIndex = (roundStarterIndex + 1) % 4;
-        currentPlayerIndex = roundStarterIndex;
-        myColor = players[currentPlayerIndex];
-
+    if (isRoundOver) {
         if (isHost) {
+            roundStarterIndex = (roundStarterIndex + 1) % 4;
+            currentPlayerIndex = roundStarterIndex;
+            myColor = players[currentPlayerIndex];
+
             distributeCards();
-            socket.emit('syncHands', { roomCode: myRoomCode, hands: playersHands });
+                socket.emit('syncHands', { 
+                roomCode: myRoomCode, 
+                hands: playersHands,
+                nextStarter: currentPlayerIndex 
+            });
             startExchangePhase();
         }
         return;
@@ -631,6 +640,7 @@ btnLeaveRoom.addEventListener("click", () => {
 const discardElement = document.getElementById("discard");
 let selectedCard = null;
 let selectedPawn = null;
+let roundStarterIndex = 0;
 let needToMovePawn = false;
 const cardValues = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "JOKER"];
 const cardSymbols = ["♠", "♥", "♣", "♦"];
@@ -794,6 +804,9 @@ discardElement.addEventListener("click", (event) => {
 
         selectedCard.remove();
         selectedCard = null;
+
+        const remainingCards = document.querySelectorAll(`#hand-${myColor} .card`);
+        remainingCards.forEach((card, newIndex) => card.setAttribute("data-index", newIndex));
         
         if (!needToMovePawn) {
             if (!checkWin()) passTurnToNext();
@@ -1056,6 +1069,7 @@ socket.on("teamExchangeLocked", (data) => {
 
 function handleExchangeLocked(data) {
     console.log("handleExchangeLocked:", data.color, "teamExchanges après:", Object.keys(teamExchanges));
+    if (teamExchanges[data.color]) return;
     teamExchanges[data.color] = data;
 
     if (data.color === myTeammateColor) {
@@ -1066,57 +1080,61 @@ function handleExchangeLocked(data) {
         pSlot.innerHTML = "";
     }
 
+    executeSwapsLocally();
+
     if (teamExchanges[myAssignedColor] && teamExchanges[myTeammateColor]) {
-        if (document.getElementById("exchange-overlay").style.display !== "none") {
+        if (isExchangePhase) { 
             document.getElementById("exchange-title").textContent = "Échange confirmé !";
+            
             setTimeout(() => {
-                document.getElementById("exchange-title").textContent = "En attente des adversaires...";
-                document.getElementById("exchange-title").style.color = "#888";
-                
-                if (myAssignedColor) {
-                    let myHand = document.getElementById(`hand-${myAssignedColor}`);
-                    if (myHand) {
-                        myHand.classList.remove("exchange-active");
-                        myHand.classList.remove("exchange-selected");
-                    }
+                if (isExchangePhase) {
+                    document.getElementById("exchange-title").textContent = "En attente des adversaires...";
+                    document.getElementById("exchange-title").style.color = "#888";
                 }
             }, 2000);
-            executeSwapsLocally();
+            
+            if (myAssignedColor) {
+                let myHand = document.getElementById(`hand-${myAssignedColor}`);
+                if (myHand) {
+                    myHand.classList.remove("exchange-active");
+                    myHand.classList.remove("exchange-selected");
+                }
+            }
         }
-    } else {
-        executeSwapsLocally();
     }
 }
 
 function executeSwapsLocally() {
-    console.log("executeSwapsLocally:", JSON.stringify(teamExchanges));
-    if (teamExchanges.red && teamExchanges.yellow && !teamExchanges.red.swapped) {
-        let rCard = playersHands['red'][teamExchanges.red.cardIndex];
-        let yCard = playersHands['yellow'][teamExchanges.yellow.cardIndex];
-        playersHands['red'][teamExchanges.red.cardIndex] = yCard;
-        playersHands['yellow'][teamExchanges.yellow.cardIndex] = rCard;
-        teamExchanges.red.swapped = true;
-        teamExchanges.yellow.swapped = true;
-    }
-    
-    if (teamExchanges.blue && teamExchanges.green && !teamExchanges.blue.swapped) {
-        let bCard = playersHands['blue'][teamExchanges.blue.cardIndex];
-        let gCard = playersHands['green'][teamExchanges.green.cardIndex];
-        playersHands['blue'][teamExchanges.blue.cardIndex] = gCard;
-        playersHands['green'][teamExchanges.green.cardIndex] = bCard;
-        teamExchanges.blue.swapped = true;
-        teamExchanges.green.swapped = true;
+    try {
+        if (teamExchanges.red && teamExchanges.yellow && !teamExchanges.red.swapped) {
+            let rCard = playersHands['red'][teamExchanges.red.cardIndex];
+            let yCard = playersHands['yellow'][teamExchanges.yellow.cardIndex];
+            playersHands['red'][teamExchanges.red.cardIndex] = yCard;
+            playersHands['yellow'][teamExchanges.yellow.cardIndex] = rCard;
+            teamExchanges.red.swapped = true;
+            teamExchanges.yellow.swapped = true;
+        }
+    } catch (err) {
+        console.error("Erreur swap red/yellow :", err);
     }
 
-    console.log("swapped states:", 
-        "red:", teamExchanges.red?.swapped, 
-        "yellow:", teamExchanges.yellow?.swapped,
-        "blue:", teamExchanges.blue?.swapped, 
-        "green:", teamExchanges.green?.swapped,
-        "allDone:", colorSides.every(c => !isBotColor(c) ? teamExchanges[c]?.swapped : true)
-    );
-    const allDone = colorSides.every(c => !isBotColor(c) ? teamExchanges[c]?.swapped : true);
-    if (allDone) {
+    try {
+        if (teamExchanges.blue && teamExchanges.green && !teamExchanges.blue.swapped) {
+            let bCard = playersHands['blue'][teamExchanges.blue.cardIndex];
+            let gCard = playersHands['green'][teamExchanges.green.cardIndex];
+            playersHands['blue'][teamExchanges.blue.cardIndex] = gCard;
+            playersHands['green'][teamExchanges.green.cardIndex] = bCard;
+            teamExchanges.blue.swapped = true;
+            teamExchanges.green.swapped = true;
+        }
+    } catch (err) {
+        console.error("Erreur swap blue/green :", err);
+    }
+
+    const allDone = players.every(c => teamExchanges[c] && teamExchanges[c].swapped);
+    console.log("allDone:", allDone, JSON.parse(JSON.stringify(teamExchanges)));
+    
+    if (allDone && isExchangePhase) {
         isExchangePhase = false;
         document.getElementById("exchange-overlay").style.display = "none";
         document.getElementById("exchange-title").style.color = "white";
@@ -1196,8 +1214,13 @@ socket.on('roomJoined', (data) => {
     showPopUp(`Connecté au salon ${data.code} !`);
 });
 
-socket.on('receiveHands', (handsFromServer) => {
-    playersHands = handsFromServer;
+socket.on('receiveHands', (data) => {
+    playersHands = data.hands;
+    if (data.nextStarter !== undefined) {
+        currentPlayerIndex = data.nextStarter;
+        roundStarterIndex = data.nextStarter;
+        myColor = players[currentPlayerIndex];
+    }
     startExchangePhase();
 });
 
@@ -1267,7 +1290,10 @@ socket.on('pawnMoved', (data) => {
     checkWin();
 });
 
-socket.on('turnChanged', () => nextTurn());
+socket.on('turnChanged', () => {
+    if (isExchangePhase) return;
+    nextTurn();
+});
 
 socket.on('errorMsg', (msg) => {
     alert(msg);

@@ -188,11 +188,7 @@ function botGetPossibleMoves(botColor, cardValue) {
     if (cardValue === "J" && allOnBoard.length >= 2) {
         for (let i = 0; i < allOnBoard.length; i++) {
             for (let j = i + 1; j < allOnBoard.length; j++) {
-                let a = allOnBoard[i];
-                let b = allOnBoard[j];
-                if (botIsUntouchable(a.pawn, a.pawnColor)) continue;
-                if (botIsUntouchable(b.pawn, b.pawnColor)) continue;
-                moves.push({ type: "swap", pawnA: a, pawnB: b });
+                moves.push({ type: "swap", pawnA: allOnBoard[i], pawnB: allOnBoard[j] });
             }
         }
     }

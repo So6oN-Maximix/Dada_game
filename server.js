@@ -106,7 +106,7 @@ io.on("connection", (socket) => {
             room.hands = data.hands;
             room.gameStarted = true
         };
-        socket.to(data.roomCode).emit("receiveHands", data.hands);
+        socket.to(data.roomCode).emit("receiveHands", data);
     });
     socket.on("playCard", (data) => socket.to(data.roomCode).emit("cardPlayed", data));
     socket.on("lockExchange", (data) => socket.to(data.roomCode).emit("teamExchangeLocked", data));
