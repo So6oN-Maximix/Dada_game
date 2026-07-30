@@ -37,7 +37,8 @@ jobs:
         host: ${{ secrets.ALWAYSDATA_HOST }}
         username: ${{ secrets.ALWAYSDATA_USER }}
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
+        timeout: "30s"
         script: |
-          cd /home/dadagame/www
-          # Commande pour tuer l'ancien processus Java s'il tourne encore et laisser Alwaysdata relancer
+          cd /home/ton-nom-utilisateur/ton-dossier-de-projet
           pkill -f java || true
+          exit 0
