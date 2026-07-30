@@ -37,8 +37,8 @@ jobs:
         host: ${{ secrets.ALWAYSDATA_HOST }}
         username: ${{ secrets.ALWAYSDATA_USER }}
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
-        timeout: "30s"
+        timeout: "10s"
+        command_timeout: "10s"
         script: |
           cd /home/dadagame/www
           pkill -f java || true
-          exit 0
