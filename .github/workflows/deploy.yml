@@ -26,7 +26,7 @@ jobs:
         username: ${{ secrets.ALWAYSDATA_USER }}
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
         source: "target/*.jar,src/**,pom.xml"
-        target: "/home/ton-nom-utilisateur/ton-dossier-de-projet"
+        target: "/home/dadagame/www"
 
     - name: Restart application on Alwaysdata
       uses: appleboy/ssh-action@master
@@ -35,6 +35,6 @@ jobs:
         username: ${{ secrets.ALWAYSDATA_USER }}
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
         script: |
-          cd /home/ton-nom-utilisateur/ton-dossier-de-projet
+          cd /home/dadagame/www
           # Commande pour tuer l'ancien processus Java s'il tourne encore et laisser Alwaysdata relancer
           pkill -f java || true
