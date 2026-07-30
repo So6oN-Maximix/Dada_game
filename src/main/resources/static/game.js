@@ -831,7 +831,12 @@ let myPseudo = "";
 let myAssignedColor = "";
 let myRoomCode = "";
 let isHost = false;
-const socket = new WebSocket('ws://localhost:8080/ws/dada');
+
+const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+const host = window.location.host;
+const socketUrl = `${protocol}${host}/ws/dada`;
+
+const socket = new WebSocket(socketUrl);
 
 socket.onopen = () => console.log("Connecté au serveur Java !");
 
