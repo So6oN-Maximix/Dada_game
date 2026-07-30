@@ -30,15 +30,3 @@ jobs:
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
         source: "target/*.jar,src/**,pom.xml"
         target: "/home/dadagame/www"
-
-    - name: Restart application on Alwaysdata
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.ALWAYSDATA_HOST }}
-        username: ${{ secrets.ALWAYSDATA_USER }}
-        password: ${{ secrets.ALWAYSDATA_PASSWORD }}
-        timeout: "10s"
-        command_timeout: "10s"
-        script: |
-          cd /home/dadagame/www
-          pkill -f java || true
