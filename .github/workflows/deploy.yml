@@ -1,13 +1,12 @@
-name: Build and Deploy Java App
+name: Deploy Java to Alwaysdata
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
 
@@ -17,8 +16,25 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
 
-    - name: Grant execute permission for mvnw
-      run: chmod +x mvnw
-
     - name: Build with Maven
       run: ./mvnw clean package -DskipTests
+
+    - name: Copy files to Alwaysdata
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.ALWAYSDATA_HOST }}
+        username: ${{ secrets.ALWAYSDATA_USER }}
+        password: ${{ secrets.ALWAYSDATA_PASSWORD }}
+        source: "target/*.jar,src/**,pom.xml"
+        target: "/home/ton-nom-utilisateur/ton-dossier-de-projet"
+
+    - name: Restart application on Alwaysdata
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.ALWAYSDATA_HOST }}
+        username: ${{ secrets.ALWAYSDATA_USER }}
+        password: ${{ secrets.ALWAYSDATA_PASSWORD }}
+        script: |
+          cd /home/ton-nom-utilisateur/ton-dossier-de-projet
+          # Commande pour tuer l'ancien processus Java s'il tourne encore et laisser Alwaysdata relancer
+          pkill -f java || true
