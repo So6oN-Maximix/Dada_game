@@ -39,6 +39,6 @@ jobs:
         password: ${{ secrets.ALWAYSDATA_PASSWORD }}
         timeout: "30s"
         script: |
-          cd /home/ton-nom-utilisateur/ton-dossier-de-projet
+          cd /home/dadagame/www
           pkill -f java || true
           exit 0
