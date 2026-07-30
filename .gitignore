@@ -1,2 +1,16 @@
-node_modules/
-*.txt
+# Maven / Build
+target/
+*.class
+
+# IDE (IntelliJ, VS Code, Eclipse)
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# Système d'exploitation
+.DS_Store
+Thumbs.db
+*.log

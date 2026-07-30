@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test createRoom / joinRoom</title>
+</head>
+<body>
+    <h2>Test Room</h2>
+    <input type="text" id="pseudo" placeholder="Pseudo" value="Max">
+    <button onclick="creerSalle()">Créer une room</button>
+    <br><br>
+    <input type="text" id="codeRoom" placeholder="Code de la room">
+    <button onclick="rejoindreSalle()">Rejoindre</button>
+    <ul id="log"></ul>
+
+    <script>
+        const socket = new WebSocket("ws://localhost:8080/ws-dada");
+
+        socket.onopen = () => log("Connecté au serveur.");
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            log("Reçu (" + data.type + ") : " + JSON.stringify(data));
+        };
+        socket.onerror = (err) => log("Erreur : " + err);
+
+        function creerSalle() {
+            const pseudo = document.getElementById("pseudo").value;
+            socket.send(JSON.stringify({ type: "createRoom", pseudo }));
+        }
+
+        function rejoindreSalle() {
+            const pseudo = document.getElementById("pseudo").value;
+            const code = document.getElementById("codeRoom").value;
+            socket.send(JSON.stringify({ type: "joinRoom", pseudo, code }));
+        }
+
+        function log(texte) {
+            const li = document.createElement("li");
+            li.textContent = texte;
+            document.getElementById("log").appendChild(li);
+        }
+    </script>
+</body>
+</html>

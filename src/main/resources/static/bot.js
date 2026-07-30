@@ -91,7 +91,7 @@ function botEmitPlayCard(botColor, cardIndex, card) {
     let cardClass = "card " + ((card.symbol === "♥" || card.symbol === "♦") ? "red" : "black");
     if (card.value === "JOKER") cardClass = "card joker-style";
 
-    socket.emit("playCard", {
+    sendToServer("playCard", {
         roomCode: myRoomCode,
         color: botColor,
         playedIndex: cardIndex,
@@ -103,7 +103,7 @@ function botEmitPlayCard(botColor, cardIndex, card) {
 }
 
 function botEmitMovePawn(pawnData, pawnColor) {
-    socket.emit("movePawn", {
+    sendToServer("movePawn", {
         roomCode: myRoomCode,
         pawnData: { ...pawnData },
         pawnColor: pawnColor

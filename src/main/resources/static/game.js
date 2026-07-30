@@ -120,7 +120,7 @@ function loadPosition() {
 function saveGameState() {
     localStorage.setItem("game_state", JSON.stringify(usableGameState));
     console.log("Partie Sauvegardée !!\n");
-    if (myRoomCode) socket.emit("updateGameState", { roomCode: myRoomCode, gameState: usableGameState });
+    if (myRoomCode) sendToServer("updateGameState", { roomCode: myRoomCode, gameState: usableGameState });
 }
 
 function drawAllPawns() {
@@ -304,8 +304,8 @@ function playCard(cardValue) {
                                 drawPawn(pawnDatas.pawn, pawnDatas.pawn_color);
                                 saveGameState();
 
-                                socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnData.pawn }, pawnColor: pawnData.pawn_color });
-                                socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnDatas.pawn }, pawnColor: pawnDatas.pawn_color });
+                                sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnData.pawn }, pawnColor: pawnData.pawn_color });
+                                sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...pawnDatas.pawn }, pawnColor: pawnDatas.pawn_color });
 
                                 for (const color of colorSides) {
                                     for (let i = 1; i <= 4; i++) {
@@ -580,7 +580,7 @@ function nextTurn() {
             myColor = players[currentPlayerIndex];
 
             distributeCards();
-                socket.emit('syncHands', { 
+                sendToServer('syncHands', { 
                 roomCode: myRoomCode, 
                 hands: playersHands,
                 nextStarter: currentPlayerIndex 
@@ -598,7 +598,7 @@ function nextTurn() {
 
 function passTurnToNext() {
     nextTurn();
-    socket.emit('endTurn', { roomCode: myRoomCode, currentPlayerIndex: currentPlayerIndex });
+    sendToServer('endTurn', { roomCode: myRoomCode, currentPlayerIndex: currentPlayerIndex });
 }
 
 function checkWin() {
@@ -631,7 +631,7 @@ function checkWin() {
 const btnLeaveRoom = document.getElementById("btn-leave-room");
 
 btnLeaveRoom.addEventListener("click", () => {
-    socket.emit("leaveRoom", { roomCode: myRoomCode });
+    sendToServer("leaveRoom", { roomCode: myRoomCode });
     localStorage.removeItem("dada_room");
     localStorage.removeItem("game_state");
     location.reload();
@@ -714,7 +714,7 @@ document.addEventListener("click", (event) => {
                     occupant.pawn.position = occupant.pawn.id;
                     occupant.pawn.color_side = occupant.color;
                     drawPawn(occupant.pawn, occupant.color);
-                    socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
+                    sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
                 }
             }
         } else {
@@ -732,7 +732,7 @@ document.addEventListener("click", (event) => {
         selectedPawn.color_side = destColor;
 
         drawPawn(selectedPawn, selectedPawn.pawn_color);
-        socket.emit('movePawn', {
+        sendToServer('movePawn', {
             roomCode: myRoomCode,
             pawnData: { ...selectedPawn },
             pawnColor: selectedPawn.pawn_color
@@ -793,7 +793,7 @@ discardElement.addEventListener("click", (event) => {
 
         playCard(selectedCard.dataset.value);
 
-        socket.emit('playCard', {
+        sendToServer('playCard', {
             roomCode: myRoomCode,
             color: myColor,
             playedIndex: playedIndex,
@@ -831,7 +831,21 @@ let myPseudo = "";
 let myAssignedColor = "";
 let myRoomCode = "";
 let isHost = false;
-const socket = io();
+const socket = new WebSocket('ws://localhost:8080/ws/dada');
+
+socket.onopen = () => console.log("Connecté au serveur Java !");
+
+socket.onerror = (error) => console.error("Erreur WebSocket :", error);
+
+socket.onclose = () => console.log("Déconnecté du serveur");
+
+function sendToServer(type, payload = {}) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: type, ...payload }));
+    } else {
+        console.warn("WebSocket non connecté. Impossible d'envoyer :", type);
+    }
+}
 
 let isExchangePhase = false;
 let myExchangeIndex = -1;
@@ -904,7 +918,7 @@ function renderHostPanel(playerList) {
             select.appendChild(opt);
         }
         select.addEventListener("change", (e) => {
-            socket.emit("changePlayerColor", {
+            sendToServer("changePlayerColor", {
                 roomCode: myRoomCode,
                 playerId: p.id,
                 newColor: e.target.value
@@ -985,7 +999,7 @@ function startExchangePhase() {
         const allColors = ["red", "blue", "yellow", "green"];
         allColors.forEach(c => {
             let nameEl = document.getElementById(`name-${c}`);
-            if (nameEl && isBotColor(c)) {
+            if (nameEl && !realPlayers.includes(c)) {
                 let cardIndex = botChooseBestExchangeCard(c);
                 let fakeCard = playersHands[c][cardIndex];
                 if (fakeCard) {
@@ -999,8 +1013,8 @@ function startExchangePhase() {
                     console.log("Bot", c, "va échanger carte index", cardIndex, fakeCard);
                     setTimeout(() => {
                         console.log("Bot", c, "échange effectué");
+                        sendToServer("lockExchange", data);
                         handleExchangeLocked(data);
-                        socket.emit("lockExchange", data);
                     }, 1500);
                 }
             }
@@ -1023,7 +1037,7 @@ function applyMoveDirectly(pawn, pawnColor, destPos, destColor, targetStatus, is
                 occupant.pawn.position = occupant.pawn.id;
                 occupant.pawn.color_side = occupant.color;
                 drawPawn(occupant.pawn, occupant.color);
-                socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
+                sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
             }
         }
     } else {
@@ -1033,7 +1047,7 @@ function applyMoveDirectly(pawn, pawnColor, destPos, destColor, targetStatus, is
             occupant.pawn.position = occupant.pawn.id;
             occupant.pawn.color_side = occupant.color;
             drawPawn(occupant.pawn, occupant.color);
-            socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
+            sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...occupant.pawn }, pawnColor: occupant.color });
         }
     }
 
@@ -1042,7 +1056,7 @@ function applyMoveDirectly(pawn, pawnColor, destPos, destColor, targetStatus, is
     pawn.color_side = destColor;
 
     drawPawn(pawn, pawnColor);
-    socket.emit('movePawn', { roomCode: myRoomCode, pawnData: { ...pawn }, pawnColor });
+    sendToServer('movePawn', { roomCode: myRoomCode, pawnData: { ...pawn }, pawnColor });
     saveGameState();
 }
 
@@ -1060,11 +1074,7 @@ document.getElementById("btn-confirm-exchange").addEventListener("click", () => 
         cardClass: slot.className
     };
 
-    handleExchangeLocked(data);
-    socket.emit("lockExchange", data);
-});
-
-socket.on("teamExchangeLocked", (data) => {
+    sendToServer("lockExchange", data);
     handleExchangeLocked(data);
 });
 
@@ -1133,7 +1143,7 @@ function executeSwapsLocally() {
     }
 
     const allDone = players.every(c => teamExchanges[c] && teamExchanges[c].swapped);
-    console.log("allDone:", allDone, JSON.parse(JSON.stringify(teamExchanges)));
+    console.log("allDone:" + allDone + "|" + JSON.stringify(teamExchanges));
     
     if (allDone && isExchangePhase) {
         isExchangePhase = false;
@@ -1158,7 +1168,7 @@ btnCreateRoom.addEventListener("click", () => {
     }
     localStorage.setItem("dada_pseudo", myPseudo);
     btnCreateRoom.textContent = "Création...";
-    socket.emit('createRoom', { pseudo: myPseudo }); 
+    sendToServer('createRoom', { pseudo: myPseudo }); 
 });
 
 btnJoinRoom.addEventListener("click", () => {
@@ -1172,7 +1182,7 @@ btnJoinRoom.addEventListener("click", () => {
         localStorage.setItem("dada_pseudo", myPseudo);
         localStorage.setItem("dada_room", code);
         btnJoinRoom.textContent = "Connexion...";
-        socket.emit('joinRoom', { code: code, pseudo: myPseudo });
+        sendToServer('joinRoom', { code: code, pseudo: myPseudo });
     } else {
         alert("Veuillez entrer un code à 4 lettres.");
     }
@@ -1181,125 +1191,8 @@ btnJoinRoom.addEventListener("click", () => {
 btnStartGame.addEventListener("click", () => {
     btnStartGame.style.display = "none";
     distributeCards();
-    socket.emit('syncHands', { roomCode: myRoomCode, hands: playersHands });
+    sendToServer('syncHands', { roomCode: myRoomCode, hands: playersHands });
     startExchangePhase();
-});
-
-// --- LES RÉPONSES DU SERVEUR ---
-
-socket.on('roomCreated', (data) => {
-    myAssignedColor = data.color;
-    myRoomCode = data.code;
-    localStorage.setItem("dada_room", data.code);
-
-    isHost = true;
-    document.getElementById("host-panel").style.display = "block";
-
-    goToTableLocally();
-    btnStartGame.style.display = "block";
-    btnStartGame.textContent = "LANCER (1/4)";
-
-    const codeBadge = document.getElementById("board-room-code");
-    codeBadge.style.display = "block";
-    codeBadge.textContent = `CODE : ${data.code}`;
-});
-
-socket.on('roomJoined', (data) => {
-    myAssignedColor = data.color;
-    myRoomCode = data.code;
-    goToTableLocally();
-
-    const codeBadge = document.getElementById("board-room-code");
-    codeBadge.style.display = "block";
-    codeBadge.textContent = `CODE : ${data.code}`;
-    showPopUp(`Connecté au salon ${data.code} !`);
-});
-
-socket.on('receiveHands', (data) => {
-    playersHands = data.hands;
-    if (data.nextStarter !== undefined) {
-        currentPlayerIndex = data.nextStarter;
-        roundStarterIndex = data.nextStarter;
-        myColor = players[currentPlayerIndex];
-    }
-    startExchangePhase();
-});
-
-socket.on('updatePlayers', (playerList) => {
-    realPlayers = playerList.map(p => p.color);
-    let me = playerList.find(p => p.pseudo === myPseudo); 
-    if (me && me.color !== myAssignedColor) {
-        myAssignedColor = me.color;
-        if (document.getElementById("board").style.display !== "none") {
-            orientBoard(myAssignedColor);
-            showPopUp(`L'hôte t'a mis dans l'équipe ${myAssignedColor.toUpperCase()} !`);
-        }
-    }
-
-    if (isHost) renderHostPanel(playerList);
-
-    const realPlayerColors = new Set(playerList.map(p => p.color));
-    let botNum = 1;
-
-    colorSides.forEach(c => {
-        const nameEl = document.getElementById(`name-${c}`);
-        if (!nameEl) return;
-        if (realPlayerColors.has(c)) {
-            const player = playerList.find(p => p.color === c);
-            nameEl.textContent = player.pseudo;
-        } else {
-            nameEl.textContent = `🤖 Bot ${botNum++}`;
-        }
-    });
-
-    if (btnStartGame.style.display === "block") btnStartGame.textContent = `LANCER (${playerList.length}/4)`;
-
-    let lastPlayer = playerList[playerList.length - 1];
-    if (lastPlayer && lastPlayer.pseudo !== myPseudo) showPopUp(`${lastPlayer.pseudo} est arrivé à la table !`)
-});
-
-socket.on('cardPlayed', (data) => {
-    playersHands[data.color].splice(data.playedIndex, 1);
-    displayHands();
-
-    const playedCard = document.createElement("div");
-    playedCard.className = data.cardClass;
-    playedCard.classList.remove('selected');
-    playedCard.setAttribute("data-value", data.cardValue);
-    playedCard.setAttribute("data-symbol", data.cardSymbol);
-    playedCard.innerHTML = `<span class="center-sym">${data.cardSymbol}</span>`;
-
-    const angleAleatoire = Math.floor(Math.random() * 40) - 20;
-    playedCard.style.position = "absolute";
-    playedCard.style.top = "50%";
-    playedCard.style.left = "50%";
-    playedCard.style.transform = `translate(-50%, -50%) rotate(${angleAleatoire}deg)`;
-    playedCard.style.pointerEvents = "none";
-
-    document.getElementById("discard").appendChild(playedCard);
-});
-
-socket.on('pawnMoved', (data) => {
-    let pawn = usableGameState[data.pawnColor].find(p => p.id === data.pawnData.id);
-    if (pawn) {
-        pawn.status = data.pawnData.status;
-        pawn.position = data.pawnData.position;
-        pawn.color_side = data.pawnData.color_side;
-    }
-    drawPawn(data.pawnData, data.pawnColor);
-    saveGameState();
-    checkWin();
-});
-
-socket.on('turnChanged', () => {
-    if (isExchangePhase) return;
-    nextTurn();
-});
-
-socket.on('errorMsg', (msg) => {
-    alert(msg);
-    btnJoinRoom.textContent = "Rejoindre";
-    btnCreateRoom.textContent = "Générer un code";
 });
 
 // Tentative de reconnexion automatique
@@ -1309,60 +1202,198 @@ console.log("Tentative rejoin:", savedPseudo, savedRoom);
 
 if (savedPseudo && savedRoom) {
     myPseudo = savedPseudo;
-    socket.emit("rejoinRoom", { pseudo: savedPseudo, code: savedRoom });
+    sendToServer("rejoinRoom", { pseudo: savedPseudo, code: savedRoom });
 }
 
-socket.on("rejoinSuccess", (data) => {
-    console.log("rejoinSuccess reçu:", data);
-    myAssignedColor = data.color;
-    myRoomCode = data.code;
-    isHost = data.isHost;
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
 
-    if (data.gameState) {
-        usableGameState = data.gameState;
-        localStorage.setItem("game_state", JSON.stringify(usableGameState));
-    }
+    switch (data.type) {
+        case "roomCreated": {
+            myAssignedColor = data.color;
+            myRoomCode = data.code;
+            localStorage.setItem("dada_room", data.code);
 
-    if (isHost) document.getElementById("host-panel").style.display = "block";
+            isHost = true;
+            document.getElementById("host-panel").style.display = "block";
 
-    const codeBadge = document.getElementById("board-room-code");
-    codeBadge.style.display = "block";
-    codeBadge.textContent = `CODE : ${data.code}`;
+            goToTableLocally();
+            btnStartGame.style.display = "block";
+            btnStartGame.textContent = "LANCER (1/4)";
 
-    if (data.gameStarted) {
-        currentPlayerIndex = data.currentPlayerIndex || 0;
-        myColor = players[currentPlayerIndex];
-        goToTableLocally();
-        if (data.hands) {
-            playersHands = data.hands;
-            displayHands();
+            const codeBadge = document.getElementById("board-room-code");
+            codeBadge.style.display = "block";
+            codeBadge.textContent = `CODE : ${data.code}`;
+            break;
         }
-    } else if (isHost) {
-        mainMenu.style.display = "none";
-        btnStartGame.style.display = "block";
-        document.getElementById("board").style.display = "block";
-        if (myAssignedColor) orientBoard(myAssignedColor);
-    } else {
-        mainMenu.style.display = "none";
-        document.getElementById("board").style.display = "block";
-        if (myAssignedColor) orientBoard(myAssignedColor);
+
+        case "roomJoined": {
+            myAssignedColor = data.color;
+            myRoomCode = data.code;
+            goToTableLocally();
+
+            const codeBadge = document.getElementById("board-room-code");
+            codeBadge.style.display = "block";
+            codeBadge.textContent = `CODE : ${data.code}`;
+            showPopUp(`Connecté au salon ${data.code} !`); 
+            break;
+        }
+
+        case "receiveHands": {
+            playersHands = data.hands;
+            if (data.nextStarter !== undefined) {
+                currentPlayerIndex = data.nextStarter;
+                roundStarterIndex = data.nextStarter;
+                myColor = players[currentPlayerIndex];
+            }
+            startExchangePhase();
+            break;
+        }
+
+        case "updatePlayers": {
+            const playerList = data.players || [];
+            realPlayers = playerList.map(p => p.color);
+            let me = playerList.find(p => p.pseudo === myPseudo); 
+            if (me && me.color !== myAssignedColor) {
+                myAssignedColor = me.color;
+                if (document.getElementById("board").style.display !== "none") {
+                    orientBoard(myAssignedColor);
+                    showPopUp(`L'hôte t'a mis dans l'équipe ${myAssignedColor.toUpperCase()} !`);
+                }
+            }
+
+            if (isHost) renderHostPanel(playerList);
+
+            const realPlayerColors = new Set(playerList.map(p => p.color));
+            let botNum = 1;
+
+            colorSides.forEach(c => {
+                const nameEl = document.getElementById(`name-${c}`);
+                if (!nameEl) return;
+                if (realPlayerColors.has(c)) {
+                    const player = playerList.find(p => p.color === c);
+                    nameEl.textContent = player.pseudo;
+                } else {
+                    nameEl.textContent = `🤖 Bot ${botNum++}`;
+                }
+            });
+
+            if (btnStartGame.style.display === "block") btnStartGame.textContent = `LANCER (${playerList.length}/4)`;
+
+            let lastPlayer = playerList[playerList.length - 1];
+            if (lastPlayer && lastPlayer.pseudo !== myPseudo) showPopUp(`${lastPlayer.pseudo} est arrivé à la table !`)
+            break;
+        }
+
+        case "cardPlayed": {
+            playersHands[data.color].splice(data.playedIndex, 1);
+            displayHands();
+
+            const playedCard = document.createElement("div");
+            playedCard.className = data.cardClass;
+            playedCard.classList.remove('selected');
+            playedCard.setAttribute("data-value", data.cardValue);
+            playedCard.setAttribute("data-symbol", data.cardSymbol);
+            playedCard.innerHTML = `<span class="center-sym">${data.cardSymbol}</span>`;
+
+            const angleAleatoire = Math.floor(Math.random() * 40) - 20;
+            playedCard.style.position = "absolute";
+            playedCard.style.top = "50%";
+            playedCard.style.left = "50%";
+            playedCard.style.transform = `translate(-50%, -50%) rotate(${angleAleatoire}deg)`;
+            playedCard.style.pointerEvents = "none";
+
+            document.getElementById("discard").appendChild(playedCard);
+            break;
+        }
+        
+        case "pawnMoved": {
+            let pawn = usableGameState[data.pawnColor].find(p => p.id === data.pawnData.id);
+            if (pawn) {
+                pawn.status = data.pawnData.status;
+                pawn.position = data.pawnData.position;
+                pawn.color_side = data.pawnData.color_side;
+            }
+            drawPawn(data.pawnData, data.pawnColor);
+            saveGameState();
+            checkWin();
+            break;
+        }
+
+        case "turnChanged": {
+            if (isExchangePhase) return;
+            nextTurn();
+            break;
+        }
+
+        case "teamExchangeLocked": {
+            handleExchangeLocked(data);
+            break;
+        }
+        
+        case "errorMsg": {
+            alert(data.message);
+            btnJoinRoom.textContent = "Rejoindre";
+            btnCreateRoom.textContent = "Générer un code";
+            break;
+        }
+
+        case "rejoinSuccess": {
+            console.log("rejoinSuccess reçu:", data);
+            myAssignedColor = data.color;
+            myRoomCode = data.code;
+            isHost = data.isHost;
+
+            if (data.gameState) {
+                usableGameState = data.gameState;
+                localStorage.setItem("game_state", JSON.stringify(usableGameState));
+            }
+
+            if (isHost) document.getElementById("host-panel").style.display = "block";
+
+            const codeBadge = document.getElementById("board-room-code");
+            codeBadge.style.display = "block";
+            codeBadge.textContent = `CODE : ${data.code}`;
+
+            if (data.gameStarted) {
+                currentPlayerIndex = data.currentPlayerIndex || 0;
+                myColor = players[currentPlayerIndex];
+                goToTableLocally();
+                if (data.hands) {
+                    playersHands = data.hands;
+                    displayHands();
+                }
+            } else if (isHost) {
+                mainMenu.style.display = "none";
+                btnStartGame.style.display = "block";
+                document.getElementById("board").style.display = "block";
+                if (myAssignedColor) orientBoard(myAssignedColor);
+            } else {
+                mainMenu.style.display = "none";
+                document.getElementById("board").style.display = "block";
+                if (myAssignedColor) orientBoard(myAssignedColor);
+            }
+
+            showPopUp("Reconnecté à la table !");
+            break;
+        }
+        
+        case "rejoinFailed": {
+            console.log("rejoinFailed reçu");
+            localStorage.removeItem("dada_pseudo");
+            localStorage.removeItem("dada_room");
+            break;
+        }
+
+        case "serverInstance": {
+            const lastKnownInstance = localStorage.getItem("dada_server_instance");
+            if (lastKnownInstance && lastKnownInstance !== data.id) {
+                localStorage.removeItem("dada_pseudo");
+                localStorage.removeItem("dada_room");
+                localStorage.removeItem("game_state");
+            }
+            localStorage.setItem("dada_server_instance", data.id);
+            break;
+        }
     }
-
-    showPopUp("Reconnecté à la table !");
-});
-
-socket.on("rejoinFailed", () => {
-    console.log("rejoinFailed reçu");
-    localStorage.removeItem("dada_pseudo");
-    localStorage.removeItem("dada_room");
-});
-
-socket.on("serverInstance", (data) => {
-    const lastKnownInstance = localStorage.getItem("dada_server_instance");
-    if (lastKnownInstance && lastKnownInstance !== data.id) {
-        localStorage.removeItem("dada_pseudo");
-        localStorage.removeItem("dada_room");
-        localStorage.removeItem("game_state");
-    }
-    localStorage.setItem("dada_server_instance", data.id);
-});
+};
